@@ -1,0 +1,6 @@
+pytorch_lightning
+lightning
+scikit-learn
+scipy
+matplotlib
+nflows
