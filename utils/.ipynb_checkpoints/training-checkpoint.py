@@ -21,59 +21,11 @@ from torch.optim.optimizer import Optimizer, required
 import numpy as np
 import torch
 
-class create_NF_model(nn.Module):
-    def __init__(self, d, loss_fun, output, **optimizer_config):
-        super(create_NF_model, self).__init__()
-        self.d = d
-        self.p = 0.05
-        self.optim_cfg = optimizer_config
-        self.optimizer = self.optim_cfg.pop('optimizer')
-        self.linear1 = nn.Linear(self.d, 64)
-        self.linear2 = nn.Linear(64, 128)
-        self.linear3 = nn.Linear(128, 64)
-        self.linear4 = nn.Linear(64, 1)
-        self.dropout1 = nn.Dropout(p = 0.05)
-        self.dropout3 = nn.Dropout(p = 0.05)
-        self.dropout2 = nn.Dropout(p = 0.05)
-        self.output = output
-        self.loss_fun = loss_fun
-        self.automatic_optimization = False
-    
-    def forward(self, x):
-        p = self.p
-        x = self.linear1(x)
-        x = nn.ReLU()(x)
-        x = self.dropout1(x)
-        x = self.linear2(x)
-        x = nn.ReLU()(x)
-        x = self.dropout2(x)
-        x = self.linear3(x)
-        x = nn.ReLU()(x)
-        x = self.dropout3(x)
-        x = self.linear4(x)
-        if self.output == 'relu':
-            x = nn.ReLU()(x)
-            return x
-        if self.output == 'linear':
-            return x
-    def configure_optimizers(self):
-        if self.optimizer == 'adam':
-            optimizer = torch.optim.Adam(self.parameters(), **self.optim_cfg)
-        if self.optimizer == 'ECD_q1':
-            optimizer = ECD_q1_scaled(self.parameters(), **self.optim_cfg)
-        if self.optimizer == 'ECD_q1_F2_thetastep':
-            optimizer = ECD_q1_F2_thetastep(self.parameters(), **self.optim_cfg)
-        if self.optimizer == 'ECD_q1_F2':
-            optimizer = ECD_q1_adaptive_F2(self.parameters(), **self.optim_cfg)
-        if self.optimizer == 'lion':
-            optimizer = Lion(self.parameters(), **self.optim_cfg)
-        return optimizer  
 
 def initialize_linear(model, shrinkage, distribution = 'uniform'):
     for name, param in model.named_parameters():
         if 'weight' in name:
             fan_in = param.shape[1]
-        # print(fan_in)
         if distribution == 'Gaussian':
             param.data.normal_(mean = 0, std = 1/(fan_in*shrinkage)**0.5)
         if distribution == 'uniform':
@@ -143,16 +95,12 @@ class create_model_original(pl.LightningModule):
             if self.optimizer == 'ECD':
                 optimizer = [ECD_q1_scaled(self.outer_params,lr = self.learning_rate, eta = self.eta, F0=self.F0,  nu = self.nu, weight_decay = self.weight_decay),
                 ECD_q1_scaled(self.hidden_params,lr = self.hidden_lr, eta = self.eta, F0=self.F0,  nu = self.nu, weight_decay = self.weight_decay)]
-            if self.optimizer == 'ECD_v2':
-                optimizer = ECD_q1_scaled_V2(self.parameters(), lr = self.learning_rate, eta = self.eta, F0=self.F0,  nu = self.nu, weight_decay = self.weight_decay) 
             print(self.hidden_params, self.outer_params)
         else:
             if self.optimizer == 'adam':
                 optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
             if self.optimizer == 'ECD':
-                optimizer = ECD_q1_scaled(self.parameters(), lr = self.learning_rate, eta = self.eta, F0=self.F0,  nu = self.nu, weight_decay = self.weight_decay)
-            if self.optimizer == 'ECD_v2':
-                optimizer = ECD_q1_scaled_V2(self.parameters(), lr = self.learning_rate, eta = self.eta, F0=self.F0,  nu = self.nu, weight_decay = self.weight_decay)        
+                optimizer = ECD_q1_scaled(self.parameters(), lr = self.learning_rate, eta = self.eta, F0=self.F0,  nu = self.nu, weight_decay = self.weight_decay)      
         return optimizer    
 
     def training_step(self, train_batch, batch_idx):
@@ -179,9 +127,7 @@ class create_model_original(pl.LightningModule):
         else:
             optimizers.step(closure)
             optimizers.zero_grad()
-        # self.log_dict({'train_loss': loss}, on_step=True, on_epoch=False, prog_bar=True, logger=False)
         self.train_hist.append(loss.item())
-        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=False)
         return loss
 
     def validation_step(self, test_batch, batch_idx):
@@ -192,8 +138,6 @@ class create_model_original(pl.LightningModule):
         # compute metrics
         loss = torch.mean(self.loss_fun(y, y_pred))
         self.val_hist.append(loss.item())
-        # self.log_dict({'val_loss': loss}, on_step=True, on_epoch=False, prog_bar=True, logger=False)
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=False)
         return loss
 
 class EarlyStopper:
@@ -244,11 +188,6 @@ def get_n_params(model):
         pp += nn
     return pp
 
-# # Pytorch early stopping but not restoring best weights from last epoch
-# earlystopping = EarlyStopping(monitor='val_loss', patience=10,
-#                               verbose=0, mode='min')
-
-
 class custom_model(nn.Module):
     def __init__(self, **optimizer_config):
         super().__init__()
@@ -259,12 +198,6 @@ class custom_model(nn.Module):
             optimizer = torch.optim.Adam(self.parameters(), **self.optim_cfg)
         if self.optimizer == 'ECD_q1':
             optimizer = ECD_q1_scaled(self.parameters(), **self.optim_cfg)
-        if self.optimizer == 'ECD_q1_F2_thetastep':
-            optimizer = ECD_q1_F2_thetastep(self.parameters(), **self.optim_cfg)
-        if self.optimizer == 'ECD_q1_F2':
-            optimizer = ECD_q1_adaptive_F2(self.parameters(), **self.optim_cfg)
-        if self.optimizer == 'lion':
-            optimizer = Lion(self.parameters(), **self.optim_cfg)
         return optimizer   
 
 class MLP_widen(custom_model):
