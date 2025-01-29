@@ -1,4 +1,4 @@
-# Optimizers for Stabilizing Neural Simulation-based Inference
+# Optimizers for Stabilizing Likelihood-free Inference
 
 This is the codebase for ...
 
