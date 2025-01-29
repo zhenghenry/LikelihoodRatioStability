@@ -21,16 +21,6 @@ from torch.optim.optimizer import Optimizer, required
 import numpy as np
 import torch
 
-
-def initialize_linear(model, shrinkage, distribution = 'uniform'):
-    for name, param in model.named_parameters():
-        if 'weight' in name:
-            fan_in = param.shape[1]
-        if distribution == 'Gaussian':
-            param.data.normal_(mean = 0, std = 1/(fan_in*shrinkage)**0.5)
-        if distribution == 'uniform':
-            param.data.uniform_(-1/(fan_in*shrinkage)**0.5,1/(fan_in*shrinkage)**0.5)
-
 class create_model_original(pl.LightningModule):
     def __init__(self, d, loss_fun, output, optimizer, learning_rate, eta, F0, nu, weight_decay = 0., hidden_lr = None):
         super(create_model_original, self).__init__()
@@ -116,7 +106,6 @@ class create_model_original(pl.LightningModule):
         else:
             optimizers.zero_grad()
         loss = torch.mean(self.loss_fun(y, y_pred))
-        # print(loss)
         loss.backward()
         def closure():
             return loss
@@ -128,16 +117,16 @@ class create_model_original(pl.LightningModule):
             optimizers.step(closure)
             optimizers.zero_grad()
         self.train_hist.append(loss.item())
+        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=False)
         return loss
 
     def validation_step(self, test_batch, batch_idx):
         X, y = test_batch
         y = y.type(torch.float32)
-        # forward pass
         y_pred = self.forward(X).squeeze()
-        # compute metrics
         loss = torch.mean(self.loss_fun(y, y_pred))
         self.val_hist.append(loss.item())
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=False)
         return loss
 
 class EarlyStopper:
