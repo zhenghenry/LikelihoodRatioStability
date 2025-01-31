@@ -1,6 +1,6 @@
 # Optimizers for Stabilizing Likelihood-free Inference
 
-This is the codebase for ...
+This is the codebase for [...](https://arxiv.org/pdf/2501.18419)
 
 ### Setup
 Run `pip install -r requirements.txt' to install all necessary packages
