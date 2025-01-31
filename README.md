@@ -3,7 +3,7 @@
 This is the codebase for [paper](https://arxiv.org/pdf/2501.18419)
 
 ### Setup
-Run `pip install -r requirements.txt' to install all necessary packages
+Run `pip install -r requirements.txt` to install all necessary packages
 
 ### Downloading ALEPH dataset
 Run the following to download the ALEPH dataset
